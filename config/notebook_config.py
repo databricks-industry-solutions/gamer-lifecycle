@@ -64,7 +64,10 @@ spark.sql(f"USE {database_name}")
 
 # COMMAND ----------
 
-mlflow.set_experiment(f"/Users/{useremail}/gaming_experiment")
+try:
+  mlflow.set_experiment(f"/Users/{useremail}/gaming_experiment") # will try creating experiment if it doesn't exist; but when two notebooks with this code executes at the same time, could trigger a race-condition
+except:
+  pass
 
 # COMMAND ----------
 
