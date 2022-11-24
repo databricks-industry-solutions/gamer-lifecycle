@@ -1,9 +1,13 @@
 # Databricks notebook source
+# MAGIC %pip install git+https://github.com/databricks-academy/dbacademy@v1.0.13 git+https://github.com/databricks-industry-solutions/notebook-solution-companion@safe-print-html --quiet --disable-pip-version-check
+
+# COMMAND ----------
+
 # MAGIC %md This notebook sets up the companion cluster(s) to run the solution accelerator. It also creates the Workflow to illustrate the order of execution. Happy exploring! 
 # MAGIC 🎉
 # MAGIC 
 # MAGIC **Steps**
-# MAGIC 1. Simply attach this notebook to a cluster with DBR 11.0 and above, and hit Run-All for this notebook. A multi-step job and the clusters used in the job will be created for you and hyperlinks are printed on the last block of the notebook. 
+# MAGIC 1. Simply attach this notebook to a cluster and hit Run-All for this notebook. A multi-step job and the clusters used in the job will be created for you and hyperlinks are printed on the last block of the notebook. 
 # MAGIC 
 # MAGIC 2. Run the accelerator notebooks: Feel free to explore the multi-step job page and **run the Workflow**, or **run the notebooks interactively** with the cluster to see how this solution accelerator executes. 
 # MAGIC 
@@ -23,37 +27,17 @@
 
 # COMMAND ----------
 
-# MAGIC %run "./config/notebook_config"
+# DBTITLE 1,Define DLT pipelines for DOTA and WOW
+import re
+from solacc.companion import NotebookSolutionCompanion
 
-# COMMAND ----------
-
-wow_pipeline_json = {
-          "clusters": [
-              {
-                  "label": "default",
-                  "autoscale": {
-                      "min_workers": 1,
-                      "max_workers": 2
-                  }
-              }
-          ],
-          "development": True,
-          "continuous": False,
-          "edition": "advanced",
-          "libraries": [
-              {
-                  "notebook": {
-                      "path": f"ingest-wow-dlt"
-                  }
-              }
-          ],
-          "name": f"{username}_wow",
-          "storage": f"{database_location}/dlt",
-          "target": f"{database_name}",
-          "allow_duplicate_names": "true"
-      }
-
-# COMMAND ----------
+useremail = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
+username = useremail.split('@')[0]
+username_sql = re.sub('\W', '_', username)
+tmpdir = f"/dbfs/tmp/{username}/"
+tmpdir_dbfs = f"/tmp/{username}"
+database_name = f"gaming_{username_sql}"
+database_location = f"{tmpdir}gaming"
 
 dota_pipeline_json = {
           "clusters": [
@@ -71,7 +55,7 @@ dota_pipeline_json = {
           "libraries": [
               {
                   "notebook": {
-                      "path": f"ingest-dota-dlt"
+                      "path": f"01a-ingest-dota-dlt"
                   }
               }
           ],
@@ -81,24 +65,48 @@ dota_pipeline_json = {
           "allow_duplicate_names": "true"
       }
 
+wow_pipeline_json = {
+          "clusters": [
+              {
+                  "label": "default",
+                  "autoscale": {
+                      "min_workers": 1,
+                      "max_workers": 2
+                  }
+              }
+          ],
+          "development": True,
+          "continuous": False,
+          "edition": "advanced",
+          "libraries": [
+              {
+                  "notebook": {
+                      "path": f"01b-ingest-wow-dlt"
+                  }
+              }
+          ],
+          "name": f"{username}_wow",
+          "storage": f"{database_location}/dlt",
+          "target": f"{database_name}",
+          "allow_duplicate_names": "true"
+      }
+
 # COMMAND ----------
 
-# DBTITLE 1,This will create a database `databricks_solacc` to keep track of the pipelines associated with the solution accelerator
+# DBTITLE 1,Create a database to track the pipelines associated with the solution accelerator
 spark.sql(f"CREATE DATABASE IF NOT EXISTS databricks_solacc LOCATION '/databricks_solacc/'")
 spark.sql(f"CREATE TABLE IF NOT EXISTS databricks_solacc.dlt (path STRING, pipeline_id STRING, solacc STRING)")
 dlt_config_table = "databricks_solacc.dlt"
 
 # COMMAND ----------
 
+# DBTITLE 1,Create DLT pipelines to ingest WOW and DOTA data
 pipeline_id_wow = NotebookSolutionCompanion().deploy_pipeline(wow_pipeline_json, dlt_config_table, spark)
 pipeline_id_dota = NotebookSolutionCompanion().deploy_pipeline(dota_pipeline_json, dlt_config_table, spark)
 
 # COMMAND ----------
 
-pipeline_id_wow
-
-# COMMAND ----------
-
+# DBTITLE 1,Define the overall orchestration workflow
 workflow_json = {
         "timeout_seconds": 36000,
         "max_concurrent_runs": 1,
@@ -113,7 +121,7 @@ workflow_json = {
                     "notebook_path": f"/config/wow-download",
                     "source": "WORKSPACE"
                 },
-                "job_cluster_key": "_cluster",
+                "job_cluster_key": "gamer_lifecycle_cluster",
                 "timeout_seconds": 0,
                 "email_notifications": {}
             },
@@ -123,7 +131,7 @@ workflow_json = {
                     "notebook_path": f"/config/dota_download",
                     "source": "WORKSPACE"
                 },
-                "job_cluster_key": "_cluster",
+                "job_cluster_key": "gamer_lifecycle_cluster",
                 "timeout_seconds": 0,
                 "email_notifications": {}
             },
@@ -161,10 +169,10 @@ workflow_json = {
                     }
                 ],
                 "notebook_task": {
-                    "notebook_path": f"ml-wow-player-churn",
+                    "notebook_path": f"02b-ml-wow-player-churn",
                     "source": "WORKSPACE"
                 },
-                "job_cluster_key": "_cluster",
+                "job_cluster_key": "gamer_lifecycle_cluster",
                 "timeout_seconds": 0,
                 "email_notifications": {}
             },
@@ -183,17 +191,17 @@ workflow_json = {
                     }
                 ],
                 "notebook_task": {
-                    "notebook_path": f"/ml-dota-toxicity",
+                    "notebook_path": f"02a-ml-dota-toxicity",
                     "source": "WORKSPACE"
                 },
-                "job_cluster_key": "_cluster",
+                "job_cluster_key": "gamer_lifecycle_cluster",
                 "timeout_seconds": 0,
                 "email_notifications": {}
             }
         ],
         "job_clusters": [
             {
-                "job_cluster_key": "_cluster",
+                "job_cluster_key": "gamer_lifecycle_cluster",
                 "new_cluster": {
                     "spark_version": "10.4.x-cpu-ml-scala2.12",
                     "spark_conf": {
@@ -219,118 +227,3 @@ workflow_json = {
 dbutils.widgets.dropdown("run_job", "False", ["True", "False"])
 run_job = dbutils.widgets.get("run_job") == "True"
 NotebookSolutionCompanion().deploy_compute(workflow_json, run_job=run_job)
-
-# COMMAND ----------
-
-job_json = {
-        "timeout_seconds": 36000,
-        "max_concurrent_runs": 1,
-        "tags": {
-            "usage": "solacc_testing",
-            "group": "CME"
-        },
-        "tasks": [
-            {
-                "job_cluster_key": "gaming_cluster",
-                "notebook_task": {
-                    "notebook_path": f"00_context"
-                },
-                "task_key": "Gaming_00"
-            },
-            {
-                "pipeline_task": {
-                    "pipeline_id": pipeline_id_wow
-                },
-                "task_key": "xx",
-                "description": "",
-                "depends_on": [
-                    {
-                        "task_key": "xx"
-                    }
-                ]
-            },
-            {
-                "job_cluster_key": "gaming_cluster",
-                "notebook_task": {
-                    "notebook_path": f"01_intro"
-                },
-                "task_key": "Gaming_01",
-                "depends_on": [
-                    {
-                        "task_key": "Gaming_00"
-                    }
-                ]
-            },
-            {
-                "job_cluster_key": "gaming_cluster",
-                "libraries": [],
-                "notebook_task": {
-                    "notebook_path": f"02_load_data"
-                },
-                "task_key": "Gaming_02",
-                "depends_on": [
-                    {
-                        "task_key": "Gaming_01"
-                    }
-                ]
-            },
-            {
-                "job_cluster_key": "gaming_cluster",
-                "notebook_task": {
-                    "notebook_path": f"03_simple_classification"
-                },
-                "libraries": [
-                    {
-                        "maven": {
-                            "coordinates": "com.johnsnowlabs.nlp:spark-nlp_2.12:4.0.0"
-                        }
-                    }
-                ],
-                "task_key": "Gaming_03",
-                "depends_on": [
-                    {
-                        "task_key": "Gaming_02"
-                    }
-                ]
-            },
-            {
-                "job_cluster_key": "gaming_cluster",
-                "notebook_task": {
-                    "notebook_path": f"04_inference_eda"
-                },
-                "libraries": [
-                    {
-                        "maven": {
-                            "coordinates": "com.johnsnowlabs.nlp:spark-nlp_2.12:4.0.0"
-                        }
-                    }
-                ],
-                "task_key": "Gaming_04",
-                "depends_on": [
-                    {
-                        "task_key": "Gaming_03"
-                    }
-                ]
-            }
-        ],
-        "job_clusters": [
-            {
-                "job_cluster_key": "gaming_cluster",
-                "new_cluster": {
-                    "spark_version": "10.4.x-cpu-ml-scala2.12",
-                "spark_conf": {
-                    "spark.databricks.delta.formatCheck.enabled": "false"
-                    },
-                    "num_workers": 4,
-                    "node_type_id": {"AWS": "i3.xlarge", "MSA": "Standard_DS3_v2", "GCP": "n1-highmem-4"}, # different from standard API - this is multi-cloud friendly
-                    "custom_tags": {
-                        "usage": "solacc_testing"
-                    },
-                    "spark_conf": {
-                        "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
-                        "spark.kryoserializer.buffer.max": "2000M"
-                    },
-                }
-            }
-        ]
-    }

@@ -20,8 +20,6 @@ from pyspark.ml.classification import RandomForestClassifier,GBTClassifier
 from pyspark.ml.feature import StringIndexer, VectorIndexer, VectorAssembler
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
-from solacc.companion import NotebookSolutionCompanion
-
 import sparknlp
 from sparknlp.annotator import *
 from sparknlp.common import *
@@ -53,11 +51,9 @@ database_location = f"{tmpdir}gaming"
 
 # COMMAND ----------
 
-os.environ['KAGGLE_USERNAME'] = 'theduncandavis' # replace with your own credential here temporarily or set up a secret scope with your credential
-#os.environ['kaggle_username'] = dbutils.secrets.get("solution-accelerator-cicd", "kaggle_username")
+os.environ['KAGGLE_USERNAME'] = dbutils.secrets.get("solution-accelerator-cicd", "kaggle_username") # replace with your own credential here temporarily or set up a secret scope with your credential
 
-os.environ['KAGGLE_KEY'] = 'eb0b5340e1db9d42ed9f169ba2a41370' # replace with your own credential here temporarily or set up a secret scope with your credential
-#os.environ['kaggle_key'] = dbutils.secrets.get("solution-accelerator-cicd", "kaggle_key")
+os.environ['KAGGLE_KEY'] = dbutils.secrets.get("solution-accelerator-cicd", "kaggle_key") # replace with your own credential here temporarily or set up a secret scope with your credential
 
 os.environ['tmpdir'] = tmpdir
 
@@ -68,7 +64,10 @@ spark.sql(f"USE {database_name}")
 
 # COMMAND ----------
 
-mlflow.set_experiment(f"/Users/{useremail}/gaming_experiment")
+try:
+  mlflow.set_experiment(f"/Users/{useremail}/gaming_experiment") # will try creating experiment if it doesn't exist; but when two notebooks with this code executes at the same time, could trigger a race-condition
+except:
+  pass
 
 # COMMAND ----------
 

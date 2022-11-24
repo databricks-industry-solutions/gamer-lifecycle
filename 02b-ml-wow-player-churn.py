@@ -118,23 +118,30 @@ space = {
   'maxBins': hp.uniform('maxBins', 10, 50),
   'maxIter': hp.uniform('maxIter', 5, 20)
 }
+model_name = "gaming_accelerator"
 
 algo=tpe.suggest
  
-with mlflow.start_run():
+with mlflow.start_run() as run:
   best_params = fmin(
     fn=train_with_hyperopt_train_gbt,
     space=space,
     algo=algo,
     max_evals=10
   )
+  
+  gradient_initial_model, initial_gradient_val_f1_metric = train_gbt(1,2,4)
+  gradient_final_model, final_gradient_val_f1_score = train_gbt(int(best_params['maxDepth']), int(best_params['maxBins']), int(best_params['maxIter']))
+  
+  mlflow.spark.log_model(gradient_final_model, "wow_player_churn", registered_model_name=model_name)
 
-mlflow.end_run()
+  # Capture the run_id to use when registring our model
+  run_id = run.info.run_id
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Lets look at the experiments and choose the model we want to push to the model registry
+# MAGIC Lets look at the experiments to inspect the best model we push to the model registry
 # MAGIC <div style="text-align: left">
 # MAGIC   <img src="https://cme-solution-accelerators-images.s3.us-west-2.amazonaws.com/toxicity/mlflow-experiments.png"; width=60%>
 # MAGIC </div>
@@ -143,11 +150,24 @@ mlflow.end_run()
 
 # Print out the parameters that produced the best model
 best_params
-
-gradient_initial_model, initial_gradient_val_f1_metric = train_gbt(1,2,4)
-gradient_final_model, final_gradient_val_f1_score = train_gbt(int(best_params['maxDepth']), int(best_params['maxBins']), int(best_params['maxIter']))
-
 print(f"On the test data, the initial (untuned) model achieved F1 score {initial_gradient_val_f1_metric}, and the final (tuned) model achieved {final_gradient_val_f1_score}.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Save final model to registry and flag as production ready
+
+# COMMAND ----------
+
+# DBTITLE 1,Save our new model to registry as a new version
+model_registered = mlflow.register_model("runs:/"+run_id+"/wow_player_churn", model_name)
+
+# COMMAND ----------
+
+# DBTITLE 1,Flag this version as production ready
+client = mlflow.tracking.MlflowClient()
+print("registering model version "+model_registered.version+" as production model")
+client.transition_model_version_stage(name = model_name, version = model_registered.version, stage = "Production", archive_existing_versions=True)
 
 # COMMAND ----------
 
@@ -156,7 +176,6 @@ print(f"On the test data, the initial (untuned) model achieved F1 score {initial
 
 # COMMAND ----------
 
-model_name = "gaming_accelerator"
 stage = 'production'
 
 loaded_model = mlflow.pyfunc.spark_udf(spark, model_uri=f"models:/{model_name}/{stage}")
