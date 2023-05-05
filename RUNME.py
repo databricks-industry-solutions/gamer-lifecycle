@@ -5,24 +5,24 @@
 
 # MAGIC %md This notebook sets up the companion cluster(s) to run the solution accelerator. It also creates the Workflow to illustrate the order of execution. Happy exploring! 
 # MAGIC 🎉
-# MAGIC 
+# MAGIC
 # MAGIC **The Steps**
 # MAGIC 1. Simply attach this notebook to a cluster and hit Run-All for this notebook. A multi-step job and the clusters used in the job will be created for you and hyperlinks are printed on the last block of the notebook. 
-# MAGIC 
+# MAGIC
 # MAGIC 2. Run the accelerator notebooks: Feel free to explore the multi-step job page and **run the Workflow**, or **run the notebooks interactively** with the cluster to see how this solution accelerator executes. 
-# MAGIC 
+# MAGIC
 # MAGIC     2a. **Run the Workflow**: Navigate to the Workflow link and hit the `Run Now` 💥. 
 # MAGIC   
 # MAGIC     2b. **Run the notebooks interactively**: Attach the notebook with the cluster(s) created and execute as described in the `job_json['tasks']` below.
-# MAGIC 
+# MAGIC
 # MAGIC **Prerequisites** 
 # MAGIC 1. You need to have cluster creation permissions in this workspace.
-# MAGIC 
+# MAGIC
 # MAGIC 2. In case the environment has cluster-policies that interfere with automated deployment, you may need to manually create the cluster in accordance with the workspace cluster policy. The `job_json` definition below still provides valuable information about the configuration these series of notebooks should run with. 
-# MAGIC 
+# MAGIC
 # MAGIC **Notes**
 # MAGIC 1. The pipelines, workflows and clusters created in this script are not user-specific. Keep in mind that rerunning this script again after modification resets them for other users too.
-# MAGIC 
+# MAGIC
 # MAGIC 2. If the job execution fails, please confirm that you have set up other environment dependencies as specified in the accelerator notebooks. Accelerators may require the user to set up additional cloud infra or secrets to manage credentials. 
 
 # COMMAND ----------
@@ -34,10 +34,10 @@ from solacc.companion import NotebookSolutionCompanion
 
 # MAGIC %md
 # MAGIC Before setting up the rest of the accelerator, we need set up a few credentials in order to access Kaggle datasets. Grab an API key for your Kaggle account ([documentation](https://www.kaggle.com/docs/api#getting-started-installation-&-authentication) here). Here we demonstrate using the [Databricks Secret Scope](https://docs.databricks.com/security/secrets/secret-scopes.html) for credential management. 
-# MAGIC 
+# MAGIC
 # MAGIC Copy the block of code below, replace the name the secret scope and fill in the credentials and execute the block. After executing the code, The accelerator notebook will be able to access the credentials it needs.
-# MAGIC 
-# MAGIC 
+# MAGIC
+# MAGIC
 # MAGIC ```
 # MAGIC client = NotebookSolutionCompanion().client
 # MAGIC try:
@@ -49,7 +49,7 @@ from solacc.companion import NotebookSolutionCompanion
 # MAGIC   "key": "kaggle_username",
 # MAGIC   "string_value": "____"
 # MAGIC })
-# MAGIC 
+# MAGIC
 # MAGIC client.execute_post_json(f"{client.endpoint}/api/2.0/secrets/put", {
 # MAGIC   "scope": "solution-accelerator-cicd",
 # MAGIC   "key": "kaggle_key",
@@ -122,16 +122,14 @@ wow_pipeline_json = {
 
 # COMMAND ----------
 
-# DBTITLE 1,Create a database to track the pipelines associated with the solution accelerator
-spark.sql(f"CREATE DATABASE IF NOT EXISTS databricks_solacc LOCATION '/databricks_solacc/'")
-spark.sql(f"CREATE TABLE IF NOT EXISTS databricks_solacc.dlt (path STRING, pipeline_id STRING, solacc STRING)")
-dlt_config_table = "databricks_solacc.dlt"
+# DBTITLE 1,Reinitiate the database the accelerator uses
+spark.sql(f"DROP DATABASE IF EXISTS {database_name} CASCADE")
 
 # COMMAND ----------
 
 # DBTITLE 1,Create DLT pipelines to ingest WOW and DOTA data
-pipeline_id_wow = NotebookSolutionCompanion().deploy_pipeline(wow_pipeline_json, dlt_config_table, spark)
-pipeline_id_dota = NotebookSolutionCompanion().deploy_pipeline(dota_pipeline_json, dlt_config_table, spark)
+pipeline_id_wow = NotebookSolutionCompanion().deploy_pipeline(wow_pipeline_json, "", spark)
+pipeline_id_dota = NotebookSolutionCompanion().deploy_pipeline(dota_pipeline_json, "", spark)
 
 # COMMAND ----------
 
@@ -145,19 +143,9 @@ workflow_json = {
         },
         "tasks": [
             {
-                "task_key": "Download_WOW",
+                "task_key": "Intro",
                 "notebook_task": {
-                    "notebook_path": f"/config/wow-download",
-                    "source": "WORKSPACE"
-                },
-                "job_cluster_key": "gamer_lifecycle_cluster",
-                "timeout_seconds": 0,
-                "email_notifications": {}
-            },
-            {
-                "task_key": "Download_DOTA",
-                "notebook_task": {
-                    "notebook_path": f"/config/dota_download",
+                    "notebook_path": f"00-intro",
                     "source": "WORKSPACE"
                 },
                 "job_cluster_key": "gamer_lifecycle_cluster",
@@ -168,7 +156,7 @@ workflow_json = {
                 "task_key": "Ingest_DOTA",
                 "depends_on": [
                     {
-                        "task_key": "Download_DOTA"
+                        "task_key": "Intro"
                     }
                 ],
                 "pipeline_task": {
@@ -181,7 +169,7 @@ workflow_json = {
                 "task_key": "Ingest_WOW",
                 "depends_on": [
                     {
-                        "task_key": "Download_WOW"
+                        "task_key": "Intro"
                     }
                 ],
                 "pipeline_task": {
@@ -239,7 +227,9 @@ workflow_json = {
                     },
                     "node_type_id": {"AWS": "i3.xlarge", "MSA": "Standard_DS3_v2", "GCP": "n1-highmem-4"}, # different from standard API - this is multi-cloud friendly
                     "custom_tags": {
-                        "usage": "solacc_testing"
+                        "usage": "solacc_testing",
+                        "group": "CME",
+                        "accelerator": "gamer-lifecycle"
                     },
                     "spark_env_vars": {
                         "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
@@ -256,3 +246,7 @@ workflow_json = {
 dbutils.widgets.dropdown("run_job", "False", ["True", "False"])
 run_job = dbutils.widgets.get("run_job") == "True"
 NotebookSolutionCompanion().deploy_compute(workflow_json, run_job=run_job)
+
+# COMMAND ----------
+
+

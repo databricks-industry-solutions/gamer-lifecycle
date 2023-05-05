@@ -3,13 +3,6 @@
 
 # COMMAND ----------
 
-#if "kaggle_username" not in os.environ or os.environ['kaggle_username'] == "" or "kaggle_key" not in os.environ or os.environ['kaggle_key'] == "":
-#  print("You need to specify your KAGGLE USERNAME and KAGGLE KEY to download the data")
-#  print("Please open notebook under ./_resources/01_download and sepcify your Kaggle credential")
-#  dbutils.notebook.exit("ERROR: Kaggle credential is required to download the data. Please open notebook under ./_resources/kaggle_credential and specify your Kaggle credential")
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC #World of Warcraft data download
 

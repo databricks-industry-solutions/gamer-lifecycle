@@ -3,18 +3,11 @@
 
 # COMMAND ----------
 
-#if "kaggle_username" not in os.environ or os.environ['kaggle_username'] == "" or "kaggle_key" not in os.environ or os.environ['kaggle_key'] == "":
-#  print("You need to specify your KAGGLE USERNAME and KAGGLE KEY to download the data")
-#  print("Please open notebook under ./_resources/01_download and sepcify your Kaggle credential")
-#  dbutils.notebook.exit("ERROR: Kaggle credential is required to download the data. Please open notebook under ./_resources/kaggle_credential and specify your Kaggle credential")
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC #### Jigsaw Dataset
-# MAGIC 
+# MAGIC
 # MAGIC * The dataset used in this accelerator is from [Jigsaw](https://jigsaw.google.com/). Jigsaw is a unit within Google that does work to create a safer internet. Some of the areas that Jigsaw focuses on include: disinformation, censorship, and toxicity.
-# MAGIC 
+# MAGIC
 # MAGIC * Jigsaw posted this dataset on [Kaggle](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data) three years ago for the toxic comment classification challenge. This is a multilabel classification problem that includes the following labels:
 # MAGIC   * Toxic, Severe Toxic, Obscene, Threat, Insult, and Identity Hate
 # MAGIC   
@@ -56,14 +49,14 @@
 # MAGIC %md
 # MAGIC #### DOTA 2 Matches Dataset
 # MAGIC [Dota 2](https://blog.dota2.com/?l=english)
-# MAGIC 
-# MAGIC 
+# MAGIC
+# MAGIC
 # MAGIC <img src="https://cme-solution-accelerators-images.s3-us-west-2.amazonaws.com/toxicity/dota_2.jpg" width="20%" />
-# MAGIC 
+# MAGIC
 # MAGIC This dataset is from is a multiplayer online battle arena (MOBA) video game developed and published by Valve. 
-# MAGIC 
+# MAGIC
 # MAGIC Dota 2 is played in matches between two teams of five players, with each team occupying and defending their own separate base on the map.
-# MAGIC 
+# MAGIC
 # MAGIC Further details about this dataset
 # MAGIC   * Dataset title: Dota 2 Matches
 # MAGIC   * Dataset source URL: https://www.kaggle.com/devinanzelmo/dota-2-matches
@@ -98,7 +91,7 @@
 
 # MAGIC %md
 # MAGIC ## Move Data to storage
-# MAGIC 
+# MAGIC
 # MAGIC Move the Jigsaw train and test data from the driver node to object storage so that it can be be ingested into Delta Lake.
 
 # COMMAND ----------
@@ -114,7 +107,7 @@ for file in ['train','test','match','match_outcomes','player_ratings','players',
 
 # MAGIC %md
 # MAGIC Copyright Databricks, Inc. [2021]. The source in this notebook is provided subject to the [Databricks License](https://databricks.com/db-license-source).  All included or referenced third party libraries are subject to the licenses set forth below.
-# MAGIC 
+# MAGIC
 # MAGIC |Library Name|Library license | Library License URL | Library Source URL |
 # MAGIC |---|---|---|---|
 # MAGIC |Spark-nlp|Apache-2.0 License| https://github.com/JohnSnowLabs/spark-nlp/blob/master/LICENSE | https://github.com/JohnSnowLabs/spark-nlp/
