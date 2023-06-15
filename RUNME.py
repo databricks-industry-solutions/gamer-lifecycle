@@ -37,6 +37,7 @@ from solacc.companion import NotebookSolutionCompanion
 # MAGIC
 # MAGIC Copy the block of code below, replace the name the secret scope and fill in the credentials and execute the block. After executing the code, The accelerator notebook will be able to access the credentials it needs.
 # MAGIC
+# MAGIC Don't forget to accept the terms of the challenges [here](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data).
 # MAGIC
 # MAGIC ```
 # MAGIC client = NotebookSolutionCompanion().client
@@ -203,7 +204,7 @@ workflow_json = {
                 "libraries": [
                     {
                         "maven": {
-                            "coordinates": "com.johnsnowlabs.nlp:spark-nlp_2.12:4.0.0"
+                            "coordinates": "com.johnsnowlabs.nlp:spark-nlp_2.12:4.4.3"
                         }
                     }
                 ],
@@ -220,7 +221,7 @@ workflow_json = {
             {
                 "job_cluster_key": "gamer_lifecycle_cluster",
                 "new_cluster": {
-                    "spark_version": "10.4.x-cpu-ml-scala2.12",
+                    "spark_version": "12.2.x-cpu-ml-scala2.12",
                     "spark_conf": {
                         "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
                         "spark.kryoserializer.buffer.max": "2000M"
@@ -234,7 +235,7 @@ workflow_json = {
                     "spark_env_vars": {
                         "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
                     },
-                    "num_workers": 4
+                    "num_workers": 8
                 }
             }
         ],
